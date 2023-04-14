@@ -11,14 +11,22 @@
 !
 !     Planck's constant and the particle mass are both taken to be 1.0.
 !
-!
 !     The variational problem is solved in the particle-in-a-box
 !     eigenfunction basis. The user provides the number of basis functions
 !     to be used, NBasis; the basis set is take to be the first NBasis
 !     particle-in-a-box eigenfunctions.
 !
+!     To compile the program, it is necessary to use LAPACK and BLAS packages.
+!     Additionally, the program assumes double precision reals will be set a
+!     compile time. For example, the program can be built using NVidia compiler
+!     with the command:
+!           %> nvfortran -llapack -lblas -r8 -i8 -o pib.exe pib.f03
 !
-!     H.P. Hratchian, 2016.
+!
+!     H. P. Hratchian, 2016, 2023.
+!     Department of Chemistry & Biochemistry
+!     University of California, Merced
+!     hhratchian@ucmerced.edu
 !
 !
 !     Variable Declarations
@@ -276,6 +284,7 @@
 !
       Implicit None
       Integer,Intent(In)::N
+      Integer::NTT
       Real,Dimension(N,N),Intent(In)::A
       Real,Dimension(N,N),Intent(Out)::A_EVecs
       Real,Dimension(N),Intent(Out)::A_EVals
@@ -286,8 +295,8 @@
 !
 !     Do the work...
 !
-      Call CPU_Time(time1)
-      Allocate(A_Symm((N*(N+1))/2),Temp_Vector(3*N))
+      NTT = (N*(N+1))/2
+      Allocate(A_Symm(NTT),Temp_Vector(3*N))
       k = 0
       Do i = 1,Size(A,1)
         Do j = 1,i
@@ -295,13 +304,8 @@
           A_Symm(k) = A(i,j)
         EndDo
       EndDo
-      Call CPU_Time(time2)
-      Write(*,*)' time2-time1: ',time2-time1
-      Call CPU_Time(time1)
       Call DSPEV('V','U',N,A_Symm,A_EVals,A_EVecs,N, &
         Temp_Vector,IError)
-      Call CPU_Time(time2)
-      Write(*,*)' DSPEV Time: ',time2-time1
       If(IError.ne.0) Write(*,'(1X,A,I4)')  &
         'DIAGONALIZATION FAILED: IError =',IError
       DeAllocate(A_Symm)
