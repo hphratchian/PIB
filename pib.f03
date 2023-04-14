@@ -9,7 +9,7 @@
 !
 !     where b and l are user-provided parameters.
 !
-!     Planck's constant and the particle mass are both taken to be 1.0.
+!     Planck's constant is 2*pi (atomic units).
 !
 !     The variational problem is solved in the particle-in-a-box
 !     eigenfunction basis. The user provides the number of basis functions
@@ -22,6 +22,32 @@
 !     with the command:
 !           %> nvfortran -llapack -lblas -r8 -i8 -o pib.exe pib.f03
 !
+!     The program has a number of command line switches that allow one to set
+!     the key parameters for the system. The command line switches include:
+!
+!           -printarrays      This switch turns on printing of kinetic energy,
+!                             potential energy, and Hamiltonian matrices. This
+!                             switch also turns on printing of the full
+!                             eigenvector matrix for the solution of the
+!                             variational solution. The default mode is to
+!                             suppress the matrix printing.
+!           -l value          This switch sets the box length to value. This
+!                             switch is optional. If it is not included in the
+!                             command line the box length is defaulted to 1.0
+!                             units.
+!           -m value          This switch sets the particle mass to value. This
+!                             switch is optional. If it is not included in the
+!                             command line the particle mass is defaulted to 1.0
+!                             units.
+!           -b value          This switch sets the potential energy slope in the
+!                             box to value. This switch is optional. If it is
+!                             not included in the command line the potential
+!                             energy slope is defaulted to 0.0.
+!           -nbasis N         This switch sets the number of basis functions to
+!                             use for the variational program. This switch is
+!                             optional. If it is not included in the number of
+!                             basis functions used is defaulted to 10.
+!
 !
 !     H. P. Hratchian, 2016, 2023.
 !     Department of Chemistry & Biochemistry
@@ -32,12 +58,12 @@
 !     Variable Declarations
       Implicit None
       Integer::i,NCmdLineArgs,NBasis
-      Real::l,b,start_time_total,end_time_total,start_time_local,  &
+      Real::l,b,mass,start_time_total,end_time_total,start_time_local,  &
         end_time_local
       Real,Dimension(:),Allocatable::HEVals
       Real,Dimension(:,:),Allocatable::TMat,VMat,HMat,HEVecs
-      Logical::Read_CmdLine_Value,Read_CmdLine_l,Read_CmdLine_m,  &
-        Read_CmdLine_NBasis,Print_Arrays
+      Logical::Read_CmdLine_Value,Read_CmdLine_l,Read_CmdLine_mass,  &
+        Read_CmdLine_b,Read_CmdLine_NBasis,Print_Arrays
       Character(Len=1024)::cmd_buffer
 !
 !     Format Statements
@@ -47,6 +73,7 @@
  1020 Format(1x,'How many basis functions are included?')
  2000 Format(/,1x,'Planck''s constant and particle mass are set to 1.')
  2010 Format(/,1x,'Box Length      = ',F10.3,/,  &
+        1x,'Mass            = ',F10.3,/,  &
         1x,'Potential Slope = ',F10.3,/,  &
         1x,'NBasis          = ',I12,/)
  8000 Format(1x,A,': ',F10.1,' s')
@@ -61,13 +88,15 @@
 !
       Call CPU_Time(start_time_total)
       l = Float(1)
+      mass = Float(1)
       b = Float(0)
       NBasis = 10
       Print_Arrays = .False.
       NCmdLineArgs = command_argument_count()
       Read_CmdLine_Value = .False.
       Read_CmdLine_l     = .False.
-      Read_CmdLine_m     = .False.
+      Read_CmdLine_mass  = .False.
+      Read_CmdLine_b     = .False.
       Do i = 1,NCmdLineArgs
         Call Get_Command_Argument(i,cmd_buffer)
         cmd_buffer = AdjustL(cmd_buffer)
@@ -76,9 +105,12 @@
           If(Read_CmdLine_l) then
             Read(cmd_buffer,*) l
             Read_CmdLine_l = .False.
-          elseif(Read_CmdLine_m) then
+          elseif(Read_CmdLine_mass) then
+            Read(cmd_buffer,*) mass
+            Read_CmdLine_mass = .False.
+          elseif(Read_CmdLine_b) then
             Read(cmd_buffer,*) b
-            Read_CmdLine_m = .False.
+            Read_CmdLine_b = .False.
           elseif(Read_CmdLine_NBasis) then
             Read(cmd_buffer,*) NBasis
             Read_CmdLine_NBasis = .False.
@@ -95,9 +127,12 @@
             Case("-l","-length")
               Read_CmdLine_Value = .True.
               Read_CmdLine_l = .True.
+            Case("-m","-mass")
+              Read_CmdLine_Value = .True.
+              Read_CmdLine_mass = .True.
             Case("-b","-slope")
               Read_CmdLine_Value = .True.
-              Read_CmdLine_m = .True.
+              Read_CmdLine_b = .True.
             Case("-nbasis")
               Read_CmdLine_Value = .True.
               Read_CmdLine_NBasis = .True.
@@ -108,7 +143,7 @@
         endIf
       EndDo
       Write(*,2000)
-      Write(*,2010) l,b,NBasis
+      Write(*,2010) l,mass,b,NBasis
 !
 !     Allocate memory for the kinetic, potential, Hamiltonian, and
 !     Hamiltonian eigen-values/vectors arrays. Then, evaluate the integrals
@@ -118,7 +153,7 @@
         HMat(NBasis,NBasis))
       Allocate(HEVals(NBasis),HEVecs(NBasis,NBasis))
       Call CPU_Time(start_time_local)
-      Call Fill_PIB_TMat(NBasis,l,TMat)
+      Call Fill_PIB_TMat(NBasis,l,mass,TMat)
       Call CPU_Time(end_time_local)
       Write(*,8000)'Time for TMat formation',end_time_local - start_time_local
       Call CPU_Time(start_time_local)
@@ -155,33 +190,36 @@
 
 
 !PROCEDURE Fill_PIB_TMat
-      Subroutine Fill_PIB_TMat(NBasis,l,TMat)
+      Subroutine Fill_PIB_TMat(NBasis,l,mass,TMat)
 !
 !     This subroutine fills the kinetic energy matrix for particle-in-a-box
-!     basis functions running from n=1 through n=NBasis (where n is the
-!     quantum number). It is assumed that the "box" has a length l and that
-!     the internal units are based on h=1.
+!     basis functions running from n=1 through n=NBasis (where n is the quantum
+!     number). The box has length l. The particle mass is mass. Planck's
+!     constant is 2*pi (atomic units).
 !
 !
-!     H.P. Hratchian, 2016.
+!     H.P. Hratchian, 2016, 2023.
 !
 !
 !     Variable Declarations
       Implicit None
       Integer,Intent(In)::NBasis
-      Real,Intent(In)::l
+      Real,Intent(In)::l,mass
       Real,Dimension(NBasis,NBasis),Intent(InOut)::TMat
 !
       Integer::i
-      Real::Prefactor
+      Real::One,Pi,Prefactor
 !
 !
 !     Initialize TMat to 0.0 and fill the diagonal.
 !
       TMat = Float(0)
-      Prefactor = Float(8)*l**2
+      One = Float(1)
+      Pi = Float(4)*ATan(One)
+      Prefactor = Pi**2/(Float(2)*mass*(l**2))
+!hph      Prefactor = Float(8)*l**2
       Do i = 1,NBasis
-        TMat(i,i) = Float(i)**2/Prefactor
+        TMat(i,i) = Prefactor*(Float(i)**2)
       EndDo
 !
       End Subroutine Fill_PIB_TMat
