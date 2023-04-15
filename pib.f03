@@ -1,8 +1,8 @@
       Program PIB
 !
-!     This program carries out a variational calculation for a quantum
-!     particle-in-box modified by a linear potential. Specifically, the
-!     potential is given by:
+!     This program carries out linear variational and perturbation theory
+!     calculations for a quantum particle-in-box modified by a linear potential.
+!     Specifically, the potential is given by:
 !
 !           V(x) = b x      for  0 < x < l
 !           V(x) = inf      for  x <= 0  and  x >= l
@@ -11,10 +11,10 @@
 !
 !     Planck's constant is 2*pi (atomic units).
 !
-!     The variational problem is solved in the particle-in-a-box
-!     eigenfunction basis. The user provides the number of basis functions
-!     to be used, NBasis; the basis set is take to be the first NBasis
-!     particle-in-a-box eigenfunctions.
+!     The variational problem is solved in the particle-in-a-box eigenfunction
+!     basis. The user provides the number of basis functions to be used, NBasis;
+!     the basis set is take to be the first NBasis particle-in-a-box
+!     eigenfunctions.
 !
 !     To compile the program, it is necessary to use LAPACK and BLAS packages.
 !     Additionally, the program assumes double precision reals will be set a
@@ -57,6 +57,7 @@
 !
 !     Variable Declarations
       Implicit None
+      Integer,Parameter::iOut=6
       Integer::i,NCmdLineArgs,NBasis
       Real::l,b,mass,start_time_total,end_time_total,start_time_local,  &
         end_time_local
@@ -76,7 +77,11 @@
         1x,'Mass            = ',F10.3,/,  &
         1x,'Potential Slope = ',F10.3,/,  &
         1x,'NBasis          = ',I12,/)
- 8000 Format(1x,A,': ',F10.1,' s')
+ 4000 Format(/,1x,'Beginning Perturbation Theory Analysis')
+ 4100 Format(4x,'Total Energies',/,  &
+             22x,'0-Order',9x,'1st-Order')
+ 4110 Format(8x,I5,3x,F14.6,3x,F14.6)
+ 8000 Format(/,1x,A,': ',F10.1,' s')
  9000 Format(/,1x,'Confused command line reading...',  &
         'found switch but unsure what to read next.')
  9010 Format(/,1x,'Found unknown command line argument: ',A)
@@ -181,6 +186,14 @@
         NBasis,1)
       If(Print_Arrays) Call Print_Matrix_Full_Real(6,HEVecs,  &
           'Hamiltonian Eigen-Vectors:',NBasis,NBasis)
+!
+!     Determine the first-order perturbation energies.
+!
+      write(iOut,4000)
+      write(iOut,4100)
+      do i = 1,NBasis
+        write(iOut,4110) i,TMat(i,i),TMat(i,i)+VMat(i,i)
+      endDo
 !
 !     Stop the total-job clock and report job time.
 !
