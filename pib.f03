@@ -58,11 +58,11 @@
 !     Variable Declarations
       Implicit None
       Integer,Parameter::iOut=6
-      Integer::i,NCmdLineArgs,NBasis
+      Integer::i,j,NCmdLineArgs,NBasis
       Real::l,b,mass,start_time_total,end_time_total,start_time_local,  &
         end_time_local
       Real,Dimension(:),Allocatable::HEVals
-      Real,Dimension(:,:),Allocatable::TMat,VMat,HMat,HEVecs
+      Real,Dimension(:,:),Allocatable::TMat,VMat,HMat,HEVecs,amps1st
       Logical::Read_CmdLine_Value,Read_CmdLine_l,Read_CmdLine_mass,  &
         Read_CmdLine_b,Read_CmdLine_NBasis,Print_Arrays
       Character(Len=1024)::cmd_buffer
@@ -78,9 +78,9 @@
         1x,'Potential Slope = ',F10.3,/,  &
         1x,'NBasis          = ',I12,/)
  4000 Format(/,1x,'Beginning Perturbation Theory Analysis')
- 4100 Format(4x,'Total Energies',/,  &
-             22x,'0-Order',9x,'1st-Order')
- 4110 Format(8x,I5,3x,F14.6,3x,F14.6)
+ 4100 Format(35x,'Total Energies',/,  &
+             20x,'0th-Order',8x,'1st-Order',8x,'2nd-Order')
+ 4110 Format(8x,I5,3x,F14.6,3x,F14.6,3x,F14.6)
  8000 Format(/,1x,A,': ',F10.1,' s')
  9000 Format(/,1x,'Confused command line reading...',  &
         'found switch but unsure what to read next.')
@@ -187,12 +187,26 @@
       If(Print_Arrays) Call Print_Matrix_Full_Real(6,HEVecs,  &
           'Hamiltonian Eigen-Vectors:',NBasis,NBasis)
 !
-!     Determine the first-order perturbation energies.
+!     Carry out perturbation theory analysis through second-order. Begin by
+!     allocating space. Then evaluate the first-order wave function amplitudes
+!     and the second-order energy correction. They print out the zero, 1st, and
+!     2nd order energies for the first NBasis states.
 !
       write(iOut,4000)
+      Allocate(amps1st(NBasis,NBasis))
+      do i = 1,NBasis
+        do j = 1,NBasis
+          if(i.ne.j) then
+            amps1st(i,j) = VMat(i,j)/(TMat(j,j)-TMat(i,i))
+          else
+            amps1st(i,i) = float(0)
+          endIf
+        endDo
+      endDo
       write(iOut,4100)
       do i = 1,NBasis
-        write(iOut,4110) i,TMat(i,i),TMat(i,i)+VMat(i,i)
+        write(iOut,4110) i,TMat(i,i),TMat(i,i)+VMat(i,i),  &
+          TMat(i,i)+VMat(i,i)+dot_product(amps1st(:,i),VMat(:,i))
       endDo
 !
 !     Stop the total-job clock and report job time.
