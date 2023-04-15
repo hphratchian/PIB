@@ -1,4 +1,4 @@
-      Program PIB
+      program PIB
 !
 !     This program carries out linear variational and perturbation theory
 !     calculations for a quantum particle-in-box modified by a linear potential.
@@ -102,12 +102,12 @@
       Read_CmdLine_l     = .False.
       Read_CmdLine_mass  = .False.
       Read_CmdLine_b     = .False.
-      Do i = 1,NCmdLineArgs
+      do i = 1,NCmdLineArgs
         Call Get_Command_Argument(i,cmd_buffer)
         cmd_buffer = AdjustL(cmd_buffer)
-        If(Read_CmdLine_Value) then
+        if(Read_CmdLine_Value) then
           Read_CmdLine_Value = .False.
-          If(Read_CmdLine_l) then
+          if(Read_CmdLine_l) then
             Read(cmd_buffer,*) l
             Read_CmdLine_l = .False.
           elseif(Read_CmdLine_mass) then
@@ -120,35 +120,35 @@
             Read(cmd_buffer,*) NBasis
             Read_CmdLine_NBasis = .False.
           else
-            Write(*,9000)
+            write(iOut,9000)
             STOP
           endIf
         else
-          Select Case(cmd_buffer)
-            Case("-noprintarrays")
+          select case(cmd_buffer)
+            case("-noprintarrays")
               Print_Arrays = .False.
-            Case("-printarrays")
+            case("-printarrays")
               Print_Arrays = .True.
-            Case("-l","-length")
+            case("-l","-length")
               Read_CmdLine_Value = .True.
               Read_CmdLine_l = .True.
-            Case("-m","-mass")
+            case("-m","-mass")
               Read_CmdLine_Value = .True.
               Read_CmdLine_mass = .True.
-            Case("-b","-slope")
+            case("-b","-slope")
               Read_CmdLine_Value = .True.
               Read_CmdLine_b = .True.
-            Case("-nbasis")
+            case("-nbasis")
               Read_CmdLine_Value = .True.
               Read_CmdLine_NBasis = .True.
-            Case Default
-              Write(*,9010) Trim(cmd_buffer)
+            case Default
+              write(iOut,9010) Trim(cmd_buffer)
               STOP
-          End Select
+          end select
         endIf
-      EndDo
-      Write(*,2000)
-      Write(*,2010) l,mass,b,NBasis
+      endDo
+      write(iOut,2000)
+      write(iOut,2010) l,mass,b,NBasis
 !
 !     Allocate memory for the kinetic, potential, Hamiltonian, and
 !     Hamiltonian eigen-values/vectors arrays. Then, evaluate the integrals
@@ -160,16 +160,16 @@
       Call CPU_Time(start_time_local)
       Call Fill_PIB_TMat(NBasis,l,mass,TMat)
       Call CPU_Time(end_time_local)
-      Write(*,8000)'Time for TMat formation',end_time_local - start_time_local
+      write(iOut,8000)'Time for TMat formation',end_time_local - start_time_local
       Call CPU_Time(start_time_local)
       Call Fill_PIB_VMat(NBasis,l,b,VMat)
       Call CPU_Time(end_time_local)
-      Write(*,8000)'Time for VMat formation',end_time_local - start_time_local
+      write(iOut,8000)'Time for VMat formation',end_time_local - start_time_local
       Call CPU_Time(start_time_local)
       HMat = TMat + VMat
       Call CPU_Time(end_time_local)
-      Write(*,8000)'Time for (TMat + VMat) formation',end_time_local - start_time_local
-      If(Print_Arrays) then
+      write(iOut,8000)'Time for (TMat + VMat) formation',end_time_local - start_time_local
+      if(Print_Arrays) then
         Call Print_Matrix_Full_Real(6,TMat,'T:',NBasis,NBasis)
         Call Print_Matrix_Full_Real(6,VMat,'V:',NBasis,NBasis)
         Call Print_Matrix_Full_Real(6,HMat,'H:',NBasis,NBasis)
@@ -179,12 +179,12 @@
 !     into arrays HEVals and HEVecs.
 !
       Call CPU_Time(start_time_local)
-      Call Matrix_Diagonalize(NBasis,HMat,HEVecs,HEVals)
+      Call Matrix_Diagonalize(iOut,NBasis,HMat,HEVecs,HEVals)
       Call CPU_Time(end_time_local)
-      Write(*,8000)'Time for H diagonalization',end_time_local - start_time_local
+      write(iOut,8000)'Time for H diagonalization',end_time_local - start_time_local
       Call Print_Matrix_Full_Real(6,HEVals,'Hamiltonian Eigen-Values:',  &
         NBasis,1)
-      If(Print_Arrays) Call Print_Matrix_Full_Real(6,HEVecs,  &
+      if(Print_Arrays) Call Print_Matrix_Full_Real(6,HEVecs,  &
           'Hamiltonian Eigen-Vectors:',NBasis,NBasis)
 !
 !     Carry out perturbation theory analysis through second-order. Begin by
@@ -212,12 +212,12 @@
 !     Stop the total-job clock and report job time.
 !
       Call CPU_Time(end_time_total)
-      Write(*,8000) 'Total Job Time',end_time_total - start_time_total
-      End Program PIB
+      write(iOut,8000) 'Total Job Time',end_time_total - start_time_total
+      end program PIB
 
 
 !PROCEDURE Fill_PIB_TMat
-      Subroutine Fill_PIB_TMat(NBasis,l,mass,TMat)
+      subroutine Fill_PIB_TMat(NBasis,l,mass,TMat)
 !
 !     This subroutine fills the kinetic energy matrix for particle-in-a-box
 !     basis functions running from n=1 through n=NBasis (where n is the quantum
@@ -245,15 +245,15 @@
       Pi = Float(4)*ATan(One)
       Prefactor = Pi**2/(Float(2)*mass*(l**2))
 !hph      Prefactor = Float(8)*l**2
-      Do i = 1,NBasis
+      do i = 1,NBasis
         TMat(i,i) = Prefactor*(Float(i)**2)
-      EndDo
+      endDo
 !
-      End Subroutine Fill_PIB_TMat
+      end subroutine Fill_PIB_TMat
 
 
 !PROCEDURE Fill_PIB_VMat
-      Subroutine Fill_PIB_VMat(NBasis,l,b,VMat)
+      subroutine Fill_PIB_VMat(NBasis,l,b,VMat)
 !
 !     This subroutine fills the potential energy matrix for particle-in-a-box
 !     with a slope potential V=b x. The matrix elements are calculated using
@@ -280,9 +280,9 @@
       One = Float(1)
       Pi = Float(4)*ATan(One)
       Prefactor = b*l/Pi**2
-      Do i = 1,NBasis
-        Do j = 1,NBasis
-          If(i.ne.j) then
+      do i = 1,NBasis
+        do j = 1,NBasis
+          if(i.ne.j) then
             IntTemp = (i-j)
             RealTemp = Float(IntTemp)*Pi
             RealTemp = Cos(RealTemp)-One
@@ -294,26 +294,26 @@
           else
             VMat(i,j) = b*l/Float(2)
           endIf
-        EndDo
-      EndDo
+        endDo
+      endDo
 !
-      End Subroutine Fill_PIB_VMat
+      end subroutine Fill_PIB_VMat
 
 
 !
 !PROCEDURE Print_Matrix_Full_Real
-      Subroutine Print_Matrix_Full_Real(IOut,A,Header,M,N)
+      subroutine Print_Matrix_Full_Real(iOut,A,Header,M,N)
 !
 !     This subroutine prints a real matrix that is fully dimension
 !     - i.e., not stored in packed form.  The unit number for the output
-!     file is IOut.  A is the matrix, which is dimensioned (m,n).  Header
+!     file is iOut.  A is the matrix, which is dimensioned (m,n).  Header
 !     is a character string that is printed at the top of the matrix dump.
 !
 !
 !     Variable Declarations
 !
       implicit none
-      integer,intent(in)::IOut,M,N
+      integer,intent(in)::iOut,M,N
       real,dimension(M,N),intent(in)::A
       character(len=*),intent(in)::Header
 !
@@ -325,29 +325,29 @@
  2000 Format(5x,5(7x,I7))
  2010 Format(1x,I7,5F14.6)
 !
-      write(IOut,1000) TRIM(Header)
+      write(iOut,1000) TRIM(Header)
       do IFirst = 1,N,NColumns
         ILast = Min(IFirst+NColumns-1,N)
-        write(IOut,2000) (i,i=IFirst,ILast)
+        write(iOut,2000) (i,i=IFirst,ILast)
         do i = 1,M
-          write(IOut,2010) i,(A(i,j),j=IFirst,ILast)
-        enddo
-      enddo
+          write(iOut,2010) i,(A(i,j),j=IFirst,ILast)
+        endDo
+      endDo
 !
       Return
-      End Subroutine Print_Matrix_Full_Real
+      end subroutine Print_Matrix_Full_Real
 
 
 !
 !     PROCEDURE Matrix_Diagonalize
-      Subroutine Matrix_Diagonalize(N,A,A_EVecs,A_EVals)
+      subroutine Matrix_Diagonalize(iOut,N,A,A_EVecs,A_EVals)
 !
 !     This routine carries out matrix diagonalization of a symmetric square
 !     matrix with leading dimension N. It is assumed that A is sent here as
 !     an (N x N) array.
 !
       Implicit None
-      Integer,Intent(In)::N
+      Integer,Intent(In)::iOut,N
       Integer::NTT
       Real,Dimension(N,N),Intent(In)::A
       Real,Dimension(N,N),Intent(Out)::A_EVecs
@@ -362,17 +362,17 @@
       NTT = (N*(N+1))/2
       Allocate(A_Symm(NTT),Temp_Vector(3*N))
       k = 0
-      Do i = 1,Size(A,1)
-        Do j = 1,i
+      do i = 1,Size(A,1)
+        do j = 1,i
           k = k+1
           A_Symm(k) = A(i,j)
-        EndDo
-      EndDo
+        endDo
+      endDo
       Call DSPEV('V','U',N,A_Symm,A_EVals,A_EVecs,N, &
         Temp_Vector,IError)
-      If(IError.ne.0) Write(*,'(1X,A,I4)')  &
+      if(IError.ne.0) write(iOut,'(1X,A,I4)')  &
         'DIAGONALIZATION FAILED: IError =',IError
       DeAllocate(A_Symm)
 !
       Return
-      End Subroutine Matrix_Diagonalize
+      end subroutine Matrix_Diagonalize
